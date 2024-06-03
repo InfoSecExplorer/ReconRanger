@@ -47,8 +47,17 @@ echo -e "\e[32m~~~~~~~~ Checking Subdomain Takeover Vulnerability... ~~~~~~~~\e[
 echo
 
 # Find Open Ports (increased connection limit)
-echo -e "\e[32m~~~~~~~~ Finding Open Ports... ~~~~~~~~\e[0m"
-sudo naabu -list "$folder/live_subdomains.txt" -c 100 -o "$folder/open_ports.txt"
+#echo -e "\e[32m~~~~~~~~ Finding Open Ports... ~~~~~~~~\e[0m"
+#sudo naabu -list "$folder/live_subdomains.txt" -c 100 -o "$folder/open_ports.txt"
+#echo
+
+# Fast Google Dorks Scan
+echo -e "\e[32m~~~~~~~~Google Dorking... ~~~~~~~~\e[0m"
+~/Fast-Google-Dorks-Scan/FGDS.sh "$domain"
+
+# HTTP parameter discovery suite
+echo -e "\e[32m~~~~~~~~ HTTP parameter discovery... ~~~~~~~~\e[0m"
+arjun -i  $folder/live_subdomains.txt
 echo
 
 # Finding JSON Files
@@ -65,9 +74,9 @@ nuclei -l "$folder/live_js.txt" -t ~/nuclei-templates/http/exposures/ -o "$folde
 echo
 
 # Running Dirsearch
-echo -e "\e[32m~~~~~~~~ Finding Hidden directories... ~~~~~~~~\e[0m"
-sudo dirsearch -e* -l "$folder/live_subdomains.txt" --deep-recursive --force-recursive --exclude-sizes=0B --random-agent --full-url -o "$folder/dirsearch.txt"
-echo
+#echo -e "\e[32m~~~~~~~~ Finding Hidden directories... ~~~~~~~~\e[0m"
+#sudo dirsearch -e* -l "$folder/live_subdomains.txt" --deep-recursive --force-recursive --exclude-sizes=0B --random-agent --full-url -o "$folder/dirsearch.txt"
+#echo
 
 # Find vulnerabilities using multiple tools
 echo -e "\e[32m~~~~~~~~ Finding all Injection Vulnerabilities... ~~~~~~~~\e[0m"
@@ -82,13 +91,14 @@ echo
 
 # Find Cross-Site Scripting (XSS) Vulnerabilities
 echo -e "\e[32m~~~~~~~~ Finding Cross-Site Scripting (XSS) Vulnerabilities... ~~~~~~~~\e[0m"
-
-echo "First method:"
+echo
 gospider -S "$folder/live_subdomains.txt" -c 10 -d 5 --blacklist ".*(jpg|jpeg|gif|css|tif|tiff|png|ttf|woff|woff2|ico|pdf|svg|txt)" --other-source | grep -e "code-200" | awk '{print $5}' | grep "=" | qsreplace -a | dalfox pipe | tee "$folder/XSS.txt"
 echo
-
-echo "Second method:"
 waybackurls "$domain" | grep '=' | qsreplace '"><script>alert(1)</script>' | while read host; do curl -sk --path-as-is "$host" | grep -qs "<script>alert(1)</script>" && echo "$host is vulnerable"; done
+echo
+echo "$domain" | httpx -silent | hakrawler -subs | grep "=" | qsreplace '"><svg onload=confirm(1)>' | airixss -payload "confirm(1)" | egrep -v 'Not'
+echo
+echo "$domain" | waybackurls | grep "=" | egrep -iv ".(jpg|jpeg|gif|css|tif|tiff|png|ttf|woff|woff2|icon|pdf|svg|txt|js)" | uro | qsreplace '"><img src=x onerror=alert(1);>' | freq
 echo
 
 # Find Open Redirection Vulnerability
